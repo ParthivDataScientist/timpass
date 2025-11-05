@@ -17,20 +17,31 @@ export default async function handler(req, res) {
     const ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
     const time = new Date().toISOString();
 
-    // Parse Browser / Device
     const ua = new UAParser(req.headers["user-agent"]);
     const browser = ua.getBrowser().name || "Unknown";
     const os = ua.getOS().name + " " + (ua.getOS().version || "") || "Unknown OS";
-    const deviceType = ua.getDevice().type || "Desktop";
-    const deviceModel = ua.getDevice().model || "Unknown";
 
-    // ✅ Fetch Geolocation (Country & City)
-    const geo = await fetch(`https://ipapi.co/${ip}/json/`).then(r => r.json()).catch(() => ({}));
-    const country = geo.country_name || "Unknown";
+    // Device detection improvements
+    const deviceType = ua.getDevice().type || "Desktop";
+    let deviceModel = ua.getDevice().model || "Unknown";
+    
+    // Normalize Android device names
+    if (deviceModel === "Unknown" && ua.getOS().name === "Android") {
+      deviceModel = "Android Phone";
+    }
+    if (deviceModel === "K") {
+      deviceModel = "Realme / Redmi / Poco Family (Unknown exact model)";
+    }
+
+    // Better IP Geolocation API
+    const geo = await fetch(`https://ipinfo.io/${ip}?token=2a9cc442be64c4`) // Free token
+      .then(r => r.json())
+      .catch(() => ({}));
+
+    const country = geo.country || "Unknown";
     const city = geo.city || "Unknown";
     const isp = geo.org || "Unknown ISP";
 
-    // ✅ Append to Google Sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SHEET_ID,
       range: "Sheet1!A:I",
