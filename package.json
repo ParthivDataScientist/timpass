@@ -2,6 +2,7 @@
   "name": "insta-logger",
   "version": "1.0.0",
   "dependencies": {
-    "googleapis": "^118.0.0"
+    "googleapis": "^118.0.0",
+    "ua-parser-js": "^1.0.35"
   }
 }

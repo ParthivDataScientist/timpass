@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import UAParser from "ua-parser-js";
 
 export default async function handler(req, res) {
   try {
@@ -13,19 +14,29 @@ export default async function handler(req, res) {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    const ip =
-      req.headers["x-forwarded-for"]?.split(",")[0] ||
-      req.socket.remoteAddress;
-
-    const userAgent = req.headers["user-agent"];
+    const ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
     const time = new Date().toISOString();
 
+    // Parse Browser / Device
+    const ua = new UAParser(req.headers["user-agent"]);
+    const browser = ua.getBrowser().name || "Unknown";
+    const os = ua.getOS().name + " " + (ua.getOS().version || "") || "Unknown OS";
+    const deviceType = ua.getDevice().type || "Desktop";
+    const deviceModel = ua.getDevice().model || "Unknown";
+
+    // ✅ Fetch Geolocation (Country & City)
+    const geo = await fetch(`https://ipapi.co/${ip}/json/`).then(r => r.json()).catch(() => ({}));
+    const country = geo.country_name || "Unknown";
+    const city = geo.city || "Unknown";
+    const isp = geo.org || "Unknown ISP";
+
+    // ✅ Append to Google Sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SHEET_ID,
-      range: "Sheet1!A:C",
+      range: "Sheet1!A:I",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[ip, time, userAgent]],
+        values: [[ip, time, browser, os, deviceType, deviceModel, country, city, isp]],
       },
     });
 
